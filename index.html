@@ -165,6 +165,9 @@ const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;
 const fmt = n => Number(n || 0).toLocaleString();
 const ago = iso => { const m = Math.round((Date.now() - Date.parse(iso)) / 6e4);
   if (m < 2) return 'just now'; if (m < 60) return m + ' min ago'; const h = Math.round(m / 60); if (h < 36) return h + ' h ago'; return Math.round(h / 24) + ' days ago'; };
+const stamp = iso => { const d = new Date(iso), today = new Date().toDateString() === d.toDateString();
+  const t = d.toLocaleTimeString(undefined, {hour:'numeric', minute:'2-digit', timeZoneName:'short'});
+  return 'Last updated ' + (today ? 'today' : d.toLocaleDateString(undefined, {month:'short', day:'numeric'})) + ' at ' + t + ' (' + ago(iso) + ')'; };
 const shortDate = s => s ? new Date(s + 'T12:00:00Z').toLocaleDateString(undefined, {month:'short', day:'numeric'}) : '';
 let D = null, HIST = [], ALLHIST = [], SNAPS = {}, cur = (location.hash || '').slice(1) || 'overview', tab = 'overdue';
 try { tab = localStorage.getItem('pulse-tab') || 'overdue'; } catch (e) {}
@@ -320,13 +323,13 @@ function render(){
   if (cur === 'overview') {
     D = null; $('#title').textContent = 'All boards'; $('#sub').textContent = 'Pipeline flow, bugs, workload and sprint progress across the SideKix workspace.'; link.hidden = true;
     const oldest = bs.reduce((a, b) => Date.parse(b.pulledAt) < Date.parse(a.pulledAt) ? b : a);
-    $('#updated').textContent = 'Updated ' + ago(oldest.pulledAt); $('#fresh').classList.toggle('stale', (Date.now() - Date.parse(oldest.pulledAt)) / 36e5 > 26);
+    $('#updated').textContent = stamp(oldest.pulledAt); $('#fresh').classList.toggle('stale', (Date.now() - Date.parse(oldest.pulledAt)) / 36e5 > 1);
     app.innerHTML = overview(); return;
   }
   D = SNAPS[cur]; HIST = ALLHIST.filter(h => h.board === cur);
   $('#title').textContent = D.board; $('#sub').textContent = 'Pipeline flow, bugs, workload and sprint progress for this board.'; link.hidden = false; link.href = D.boardUrl;
   const hrs = (Date.now() - Date.parse(D.pulledAt)) / 36e5;
-  $('#updated').textContent = 'Updated ' + ago(D.pulledAt); $('#fresh').classList.toggle('stale', hrs > 26);
+  $('#updated').textContent = stamp(D.pulledAt); $('#fresh').classList.toggle('stale', hrs > 1);
   app.innerHTML = kpis(D.kpi) + `<div class="grid">${pipeline(D.lists)}${priority(D.priority, D.status)}${people(D.people)}${sprints(D.labels)}${weekly(D.weeks)}${trend()}${attention(D.attention)}</div>`;
 }
 
@@ -336,7 +339,7 @@ document.addEventListener('click', e => { const s = e.target.closest('[data-boar
   if (D) $('#attn').outerHTML = attention(D.attention); $('#tab-' + tab)?.focus(); });
 document.addEventListener('pointermove', e => { const t = e.target.closest('[data-tip]'); t ? showTip(e, t.dataset.tip) : hideTip(); });
 document.addEventListener('pointerleave', hideTip);
-setInterval(() => { if (Object.keys(SNAPS).length) render(); }, 300000);
+setInterval(() => { const bs = boardList(); if (!bs.length) return; const iso = cur === 'overview' || !SNAPS[cur] ? bs.reduce((a, b) => Date.parse(b.pulledAt) < Date.parse(a.pulledAt) ? b : a).pulledAt : SNAPS[cur].pulledAt; $('#updated').textContent = stamp(iso); }, 60000);
 
 async function load(){
   try {
