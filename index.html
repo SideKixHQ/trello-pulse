@@ -1,0 +1,355 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>SideKix Trello Pulse</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Lora:ital,wght@0,400;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: control-room grid. Header strip, KPI row, then a two-column board of panels that stacks on phones. */
+:root{
+  color-scheme:dark;
+  --bg:#0c0b09; --panel:#16140f; --line:#2a261d; --ink:#f6efe0; --ink-2:#b9ae96; --ink-3:#7f765f;
+  --gold:#d4a856; --gold-2:#8a6d33; --gold-3:#3a2f18; --cream:#ffebb9;
+  --crit:#ef6461; --warn:#e8a33d; --good:#4fbf8a; --info:#7aa6e8;
+  --display:'Poppins',ui-sans-serif,system-ui,sans-serif; --body:'Poppins',ui-sans-serif,system-ui,sans-serif;
+  --serif:'Lora',Georgia,serif; --mono:'IBM Plex Mono',ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: light){:root:not([data-theme="dark"]){
+  color-scheme:light;
+  --bg:#faf7f0; --panel:#ffffff; --line:#e8e0cf; --ink:#17140e; --ink-2:#5b5241; --ink-3:#8c8270;
+  --gold:#a77d26; --gold-2:#d4a856; --gold-3:#f3e6c6; --cream:#7a5a17;
+  --crit:#c93a37; --warn:#b26a00; --good:#1d8a57; --info:#2f63b5;
+}}
+:root[data-theme="light"]{
+  color-scheme:light;
+  --bg:#faf7f0; --panel:#ffffff; --line:#e8e0cf; --ink:#17140e; --ink-2:#5b5241; --ink-3:#8c8270;
+  --gold:#a77d26; --gold-2:#d4a856; --gold-3:#f3e6c6; --cream:#7a5a17;
+  --crit:#c93a37; --warn:#b26a00; --good:#1d8a57; --info:#2f63b5;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+img{max-width:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:14px;line-height:1.45;padding-inline:clamp(16px,3vw,36px);padding-block:20px 48px}
+.wrap{max-width:1240px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+a{color:inherit}
+a:focus-visible,button:focus-visible{outline:2px solid var(--gold);outline-offset:2px;border-radius:4px}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px 24px;border-bottom:1px solid var(--line);padding-bottom:16px}
+.eyebrow{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);font-weight:600}
+h1{font-family:var(--display);font-weight:700;font-size:clamp(24px,3.4vw,34px);margin:4px 0 0;letter-spacing:-.01em;text-wrap:balance}
+.sub{font-family:var(--serif);font-style:italic;color:var(--ink-2);margin:4px 0 0}
+.meta{display:flex;flex-wrap:wrap;gap:10px;align-items:center;font-size:12px;color:var(--ink-2)}
+.pill{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;padding:4px 10px;background:var(--panel)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--good)}
+.dot.stale{background:var(--warn)}
+.btnlink{text-decoration:none;border:1px solid var(--gold-2);color:var(--gold);border-radius:999px;padding:4px 12px;font-weight:500}
+.btnlink:hover{background:var(--gold-3)}
+
+.kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px}
+@media (max-width:980px){.kpis{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:520px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 14px 12px;display:flex;flex-direction:column;gap:4px;position:relative;overflow:hidden}
+.kpi::before{content:"";position:absolute;inset:0 auto 0 0;width:3px;background:var(--tone,var(--line))}
+.kpi .lab{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2);font-weight:500}
+.kpi .val{font-family:var(--display);font-weight:600;font-size:30px;line-height:1.1;font-variant-numeric:tabular-nums}
+.kpi .note{font-size:12px;color:var(--ink-3)}
+
+.grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:16px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:14px;min-width:0}
+.s7{grid-column:span 7}.s5{grid-column:span 5}.s12{grid-column:span 12}.s6{grid-column:span 6}
+@media (max-width:980px){.s7,.s5,.s6{grid-column:span 12}}
+.ph{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
+h2{font-family:var(--display);font-size:16px;font-weight:600;margin:0}
+.hint{font-size:12px;color:var(--ink-3)}
+.callout{font-family:var(--serif);font-size:14px;color:var(--ink-2);border-left:2px solid var(--gold);padding:2px 0 2px 12px;margin:0}
+.callout b{font-family:var(--body);color:var(--ink);font-weight:600}
+
+/* horizontal bar rows */
+.rows{display:flex;flex-direction:column;gap:9px}
+.row{display:grid;grid-template-columns:minmax(0,170px) minmax(0,1fr) 44px;gap:10px;align-items:center}
+.row .nm{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .nm small{color:var(--ink-3);font-size:11px}
+.track{height:14px;border-radius:0 4px 4px 0;position:relative;background:transparent}
+.bar{position:absolute;inset:0 auto 0 0;background:var(--gold);border-radius:0 4px 4px 0;min-width:2px}
+.bar.stale{background:var(--gold-2);border-right:2px solid var(--panel)}
+.bar.muted{background:var(--ink-3)}
+.row .v{text-align:right;font-family:var(--mono);font-size:13px}
+.row.park .nm{color:var(--ink-3)}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--ink-2)}
+.sw{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+
+/* tables */
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);font-weight:500;text-align:right;padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+td{padding:8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap;font-family:var(--mono);font-variant-numeric:tabular-nums}
+td:first-child{font-family:var(--body);white-space:normal}
+td.hot{color:var(--crit);font-weight:500}
+.mini{display:inline-block;height:6px;background:var(--gold);border-radius:0 3px 3px 0;vertical-align:middle;margin-left:8px}
+
+/* sprint progress */
+.sprint{display:flex;flex-direction:column;gap:6px}
+.sprint .top{display:flex;justify-content:space-between;gap:8px;font-size:13px}
+.prog{height:10px;border-radius:5px;background:var(--gold-3);overflow:hidden;display:flex;gap:2px}
+.prog span{display:block;height:100%}
+.chip{display:inline-block;font-size:11px;border-radius:999px;padding:1px 8px;border:1px solid var(--line);color:var(--ink-2);white-space:nowrap}
+.chip.crit{color:var(--crit);border-color:color-mix(in srgb,var(--crit) 45%,transparent)}
+.chip.warn{color:var(--warn);border-color:color-mix(in srgb,var(--warn) 45%,transparent)}
+.chip.good{color:var(--good);border-color:color-mix(in srgb,var(--good) 45%,transparent)}
+
+/* column chart */
+.chart{width:100%;height:auto;display:block}
+.chart text{fill:var(--ink-3);font-family:var(--mono);font-size:10px}
+.chart .grid line{stroke:var(--line)}
+.tip{position:fixed;pointer-events:none;background:var(--ink);color:var(--bg);font-size:12px;padding:6px 9px;border-radius:6px;z-index:5;white-space:nowrap}
+
+/* attention list */
+.tabs{display:flex;gap:6px;flex-wrap:wrap}
+.tab{font:inherit;font-size:13px;background:transparent;color:var(--ink-2);border:1px solid var(--line);border-radius:999px;padding:5px 12px;cursor:pointer}
+.tab[aria-selected="true"]{background:var(--gold);border-color:var(--gold);color:var(--bg);font-weight:600}
+.tab .c{font-family:var(--mono);margin-left:6px;opacity:.8}
+.items{display:flex;flex-direction:column}
+.item{display:grid;grid-template-columns:52px minmax(0,1fr) auto;gap:12px;align-items:start;padding:10px 0;border-bottom:1px solid var(--line);text-decoration:none}
+.item:hover .t{color:var(--gold)}
+.item .id{font-family:var(--mono);font-size:12px;color:var(--ink-3);padding-top:2px}
+.item .t{font-size:13.5px;font-weight:500;min-width:0}
+.item .d{font-size:12px;color:var(--ink-3);margin-top:2px}
+.item .r{display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.empty{padding:28px 0;text-align:center;color:var(--ink-3);font-family:var(--serif);font-style:italic}
+.spark{display:flex;gap:16px;flex-wrap:wrap}
+.spark figure{margin:0;flex:1 1 180px;min-width:0}
+.spark figcaption{font-size:12px;color:var(--ink-2);display:flex;justify-content:space-between}
+.boards{display:flex;gap:4px;flex-wrap:wrap;border-bottom:1px solid var(--line)}
+.bt{font:inherit;font-size:14px;font-weight:500;background:none;border:0;border-bottom:2px solid transparent;color:var(--ink-2);padding:8px 12px 10px;cursor:pointer;margin-bottom:-1px}
+.bt:hover{color:var(--ink)}
+.bt[aria-current="true"]{color:var(--gold);border-bottom-color:var(--gold)}
+.bt .c{font-family:var(--mono);font-size:12px;color:var(--ink-3);margin-left:6px}
+.bname{font-weight:600;text-decoration:none;cursor:pointer;background:none;border:0;font:inherit;color:inherit;padding:0;text-align:left}
+.bname:hover{color:var(--gold)}
+.stack{display:flex;height:10px;gap:2px;min-width:120px}
+.stack span{display:block;height:100%}
+#state{padding:40px 0;text-align:center;color:var(--ink-2)}
+@media (prefers-reduced-motion:no-preference){.bar,.prog span{transition:width .4s ease}}
+</style>
+</head>
+<body>
+
+
+<div class="wrap">
+  <header>
+    <div>
+      <div class="eyebrow">SideKix · Trello pulse</div>
+      <h1 id="title">All boards</h1>
+      <p class="sub" id="sub">Pipeline flow, bugs, workload and sprint progress across the SideKix workspace.</p>
+    </div>
+    <div class="meta">
+      <span class="pill"><span class="dot" id="fresh"></span><span id="updated">Waiting for board data</span></span>
+      <a class="btnlink" id="boardlink" href="https://trello.com/b/Hy8CQTMv" target="_blank" rel="noopener" hidden>Open board</a>
+    </div>
+  </header>
+  <nav class="boards" id="boards" aria-label="Boards" hidden></nav>
+  <div id="state">Loading the latest board snapshot…</div>
+  <main id="app" hidden class="wrap"></main>
+</div>
+<div class="tip" id="tip" hidden></div>
+
+<script>
+const $ = (s, el = document) => el.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmt = n => Number(n || 0).toLocaleString();
+const ago = iso => { const m = Math.round((Date.now() - Date.parse(iso)) / 6e4);
+  if (m < 2) return 'just now'; if (m < 60) return m + ' min ago'; const h = Math.round(m / 60); if (h < 36) return h + ' h ago'; return Math.round(h / 24) + ' days ago'; };
+const shortDate = s => s ? new Date(s + 'T12:00:00Z').toLocaleDateString(undefined, {month:'short', day:'numeric'}) : '';
+let D = null, HIST = [], ALLHIST = [], SNAPS = {}, cur = (location.hash || '').slice(1) || 'overview', tab = 'overdue';
+try { tab = localStorage.getItem('pulse-tab') || 'overdue'; } catch (e) {}
+
+const tip = $('#tip');
+function showTip(e, html){ tip.innerHTML = html; tip.hidden = false; const x = Math.min(e.clientX + 12, innerWidth - tip.offsetWidth - 8); tip.style.left = x + 'px'; tip.style.top = (e.clientY + 14) + 'px'; }
+function hideTip(){ tip.hidden = true; }
+
+function kpis(k){
+  const t = [
+    ['Active cards', k.active, `${fmt(k.done)} in Done`, 'var(--gold)'],
+    ['Open bugs', k.bugs, `${fmt(k.dupes)} flagged possible duplicate`, 'var(--info)'],
+    ['Overdue', k.overdue, 'past due, not complete', 'var(--crit)'],
+    ['Due in 7 days', k.dueSoon, 'not yet complete', 'var(--warn)'],
+    ['Blocked', k.blocked, 'status or Block label', 'var(--crit)'],
+    ['Unassigned', k.unassigned, 'active cards with no owner', 'var(--ink-3)']];
+  return `<section class="kpis" aria-label="Headline numbers">${t.map(([l, v, n, c]) =>
+    `<div class="kpi" style="--tone:${c}"><span class="lab">${l}</span><span class="val">${fmt(v)}</span><span class="note">${n}</span></div>`).join('')}</section>`;
+}
+
+function pipeline(lists){
+  const max = Math.max(...lists.map(l => l.total), 1);
+  const act = lists.filter(l => !l.done && !l.park);
+  const big = [...act].sort((a, b) => b.total - a.total)[0];
+  const slow = [...act].filter(l => l.total >= 5).sort((a, b) => b.medAge - a.medAge)[0];
+  const rows = lists.map(l => {
+    const fresh = l.total - l.stale14;
+    return `<div class="row${l.park ? ' park' : ''}" data-tip="<b>${esc(l.n)}</b><br>${l.total} cards · median ${l.medAge}d in list<br>${l.stale14} sitting 14+ days · ${l.overdue} overdue">
+      <span class="nm">${esc(l.n)} <small>${l.medAge}d</small></span>
+      <span class="track"><span class="bar stale" style="width:${l.total / max * 100}%"></span><span class="bar${l.park ? ' muted' : ''}" style="width:${fresh / max * 100}%"></span></span>
+      <span class="v">${l.total}</span></div>`; }).join('');
+  return `<section class="panel s7"><div class="ph"><h2>Pipeline flow</h2><span class="hint">cards per list · median days in list</span></div>
+    ${big ? `<p class="callout"><b>${esc(big.n)}</b> holds ${big.total} of ${D.kpi.active} active cards.${slow && slow !== big ? ` Cards in <b>${esc(slow.n)}</b> have waited longest, a median of ${slow.medAge} days.` : ''}</p>` : ''}
+    <div class="rows">${rows}</div>
+    <div class="legend"><span><i class="sw" style="background:var(--gold)"></i>Moved in under 14 days</span><span><i class="sw" style="background:var(--gold-2)"></i>Sitting 14+ days</span></div></section>`;
+}
+
+function priority(p, s){
+  const order = ['Highest', 'High', 'Medium', 'Low', 'Lowest', 'Not sure', 'Not set'];
+  const keys = order.filter(k => p[k]).concat(Object.keys(p).filter(k => !order.includes(k)));
+  const max = Math.max(...keys.map(k => p[k]), 1);
+  const stat = Object.entries(s).sort((a, b) => b[1] - a[1]);
+  return `<section class="panel s5"><div class="ph"><h2>Priority mix</h2><span class="hint">active cards</span></div>
+    <div class="rows">${keys.map(k => `<div class="row" data-tip="<b>${esc(k)}</b><br>${p[k]} active cards"><span class="nm">${esc(k)}</span><span class="track"><span class="bar${k === 'Not set' ? ' muted' : ''}" style="width:${p[k] / max * 100}%"></span></span><span class="v">${p[k]}</span></div>`).join('')}</div>
+    <div class="ph"><h2>Status field</h2><span class="hint">custom field on active cards</span></div>
+    <div class="legend">${stat.map(([k, v]) => `<span class="chip ${/block/i.test(k) ? 'crit' : /progress|review/i.test(k) ? 'warn' : /done|approved/i.test(k) ? 'good' : ''}">${esc(k)} <span class="num">${v}</span></span>`).join('')}</div></section>`;
+}
+
+function sprints(labels){
+  const rows = labels.filter(l => !/duplicate|outdated|^block$/i.test(l.n)).map(l => {
+    const pd = l.done / l.total * 100, po = l.overdue / l.total * 100;
+    return `<div class="sprint" data-tip="<b>${esc(l.n)}</b><br>${l.done} done · ${l.active} active · ${l.overdue} overdue of ${l.total}">
+      <div class="top"><span>${esc(l.n)}</span><span class="num">${l.done}/${l.total} done${l.overdue ? ` · <span style="color:var(--crit)">${l.overdue} overdue</span>` : ''}</span></div>
+      <div class="prog"><span style="width:${pd}%;background:var(--good)"></span><span style="width:${po}%;background:var(--crit)"></span></div></div>`; }).join('');
+  return `<section class="panel s5"><div class="ph"><h2>Sprints &amp; labels</h2><span class="hint">done vs overdue</span></div>
+    <div class="rows" style="gap:14px">${rows}</div>
+    <div class="legend"><span><i class="sw" style="background:var(--good)"></i>Done</span><span><i class="sw" style="background:var(--crit)"></i>Overdue</span><span><i class="sw" style="background:var(--gold-3)"></i>Open, on time</span></div></section>`;
+}
+
+function people(ps){
+  const rows = ps.filter(p => p.active || p.done).sort((a, b) => b.active - a.active);
+  const max = Math.max(...rows.map(p => p.active), 1);
+  return `<section class="panel s7"><div class="ph"><h2>Workload</h2><span class="hint">cards per assignee · ${D.kpi.unassigned} active cards unassigned</span></div>
+    <div class="tw"><table><thead><tr><th>Person</th><th>Active</th><th>Past dev</th><th>High pri</th><th>Bugs</th><th>Overdue</th></tr></thead><tbody>
+    ${rows.map(p => `<tr><td>${esc(p.n)}</td><td>${p.active}<span class="mini" style="width:${p.active / max * 60}px"></span></td><td>${p.inFlight}</td><td>${p.high}</td><td>${p.bugs}</td><td class="${p.overdue ? 'hot' : ''}">${p.overdue}</td></tr>`).join('')}
+    </tbody></table></div><p class="hint">Past dev counts cards from In Development onward that have not reached Done.</p></section>`;
+}
+
+function weekly(ws){
+  const W = 640, H = 200, L = 30, B = 26, T = 10, max = Math.max(...ws.map(w => Math.max(w.created, w.done)), 1);
+  const nice = Math.ceil(max / 25) * 25 || 5, step = (W - L) / ws.length, bw = Math.min(16, step / 2 - 4);
+  const y = v => T + (H - T - B) * (1 - v / nice);
+  const ticks = [0, nice / 2, nice];
+  let g = ticks.map(t => `<g class="grid"><line x1="${L}" x2="${W}" y1="${y(t)}" y2="${y(t)}"/></g><text x="${L - 6}" y="${y(t) + 3}" text-anchor="end">${t}</text>`).join('');
+  ws.forEach((w, i) => { const x = L + i * step + step / 2;
+    const bar = (v, dx, c) => v ? `<path d="M${x + dx},${y(0)} V${y(v) + 3} q0,-3 3,-3 h${bw - 6} q3,0 3,3 V${y(0)} Z" fill="${c}"/>` : '';
+    g += `<g data-tip="<b>Week of ${shortDate(w.wk)}</b><br>${w.created} created · ${w.done} moved to Done${w.failed ? ' · ' + w.failed + ' failed' : ''}">
+      <rect x="${x - step / 2}" y="${T}" width="${step}" height="${H - T - B}" fill="transparent"/>
+      ${bar(w.created, -bw - 1, 'var(--gold)')}${bar(w.done, 1, 'var(--good)')}
+      ${i % 2 === ws.length % 2 ? '' : `<text x="${x}" y="${H - 8}" text-anchor="middle">${shortDate(w.wk)}</text>`}</g>`; });
+  const doneTotal = ws.reduce((a, w) => a + w.done, 0);
+  return `<section class="panel s7"><div class="ph"><h2>Weekly flow</h2><span class="hint">last 12 weeks</span></div>
+    ${doneTotal < 5 ? `<p class="callout">Only <b>${doneTotal}</b> cards reached Done in 12 weeks. Finished work appears to stop before the Done list, so this chart tracks intake more than output.</p>` : ''}
+    <svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Cards created and moved to Done per week">${g}</svg>
+    <div class="legend"><span><i class="sw" style="background:var(--gold)"></i>Created</span><span><i class="sw" style="background:var(--good)"></i>Moved to Done</span></div></section>`;
+}
+
+function trend(){
+  const metrics = [['active', 'Active', 'var(--gold)'], ['overdue', 'Overdue', 'var(--crit)'], ['bugs', 'Open bugs', 'var(--info)']];
+  if (HIST.length < 2) return `<section class="panel s5"><div class="ph"><h2>Trend</h2><span class="hint">one point per refresh day</span></div>
+    <p class="empty">The trend lines start drawing after the second daily refresh. ${HIST.length ? 'First point recorded ' + shortDate(HIST[0].day) + '.' : ''}</p></section>`;
+  const figs = metrics.map(([k, n, c]) => { const v = HIST.map(h => h.kpi[k] || 0), mx = Math.max(...v, 1), mn = Math.min(...v, 0), W = 200, H = 48;
+    const pts = v.map((x, i) => [i / (v.length - 1) * (W - 6) + 3, H - 4 - (x - mn) / ((mx - mn) || 1) * (H - 10)]);
+    const d = pts.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ');
+    const last = pts[pts.length - 1], delta = v[v.length - 1] - v[0];
+    return `<figure><figcaption><span>${n}</span><span class="num">${v[v.length - 1]} <span style="color:var(--ink-3)">${delta >= 0 ? '+' : ''}${delta}</span></span></figcaption>
+      <svg class="chart" viewBox="0 0 ${W} ${H}"><path d="${d} L${last[0]},${H} L3,${H} Z" fill="${c}" opacity=".12"/><path d="${d}" fill="none" stroke="${c}" stroke-width="2"/><circle cx="${last[0]}" cy="${last[1]}" r="3.5" fill="${c}" stroke="var(--panel)" stroke-width="2"/></svg></figure>`; }).join('');
+  return `<section class="panel s5"><div class="ph"><h2>Trend</h2><span class="hint">${shortDate(HIST[0].day)} to ${shortDate(HIST[HIST.length - 1].day)}</span></div><div class="spark">${figs}</div></section>`;
+}
+
+const TABS = [['overdue', 'Overdue'], ['blocked', 'Blocked'], ['stuck', 'Waiting 7+ days'], ['dueSoon', 'Due in 7 days'], ['failed', 'Failed']];
+function attention(a){
+  const list = a[tab] || [];
+  const items = list.map(c => {
+    const od = c.due && Date.parse(c.due + 'T23:59:59Z') < Date.now();
+    return `<a class="item" href="https://trello.com/c/${esc(c.k)}" target="_blank" rel="noopener">
+      <span class="id">#${c.id}</span>
+      <span><div class="t">${esc(c.n)}</div><div class="d">${esc(c.l)} · ${c.age}d in list · ${c.who.length ? esc(c.who.join(', ')) : 'Unassigned'}</div></span>
+      <span class="r">${c.due ? `<span class="chip ${od ? 'crit' : 'warn'}">${od ? 'was due' : 'due'} ${shortDate(c.due)}</span>` : ''}${c.p ? `<span class="chip">${esc(c.p)}</span>` : ''}${c.s ? `<span class="chip ${/block/i.test(c.s) ? 'crit' : ''}">${esc(c.s)}</span>` : ''}</span></a>`; }).join('');
+  return `<section class="panel s12" id="attn"><div class="ph"><h2>Needs attention</h2><span class="hint">opens the card in Trello</span></div>
+    <div class="tabs" role="tablist">${TABS.map(([k, n]) => `<button class="tab" role="tab" id="tab-${k}" data-tab="${k}" aria-selected="${k === tab}">${n}<span class="c">${(a[k] || []).length}</span></button>`).join('')}</div>
+    <div class="items" role="tabpanel">${items || `<p class="empty">Nothing in this group right now.</p>`}</div></section>`;
+}
+
+const boardList = () => Object.values(SNAPS).sort((a, b) => b.kpi.active - a.kpi.active);
+function nav(){
+  const bs = boardList(), el = $('#boards'); el.hidden = !bs.length;
+  el.innerHTML = [['overview', 'Overview', bs.reduce((a, b) => a + b.kpi.active, 0)], ...bs.map(b => [b.id, b.board, b.kpi.active])]
+    .map(([id, n, c]) => `<button class="bt" data-board="${esc(id)}" aria-current="${id === cur}">${esc(n)}<span class="c">${fmt(c)}</span></button>`).join('');
+}
+function overview(){
+  const bs = boardList(), sum = k => bs.reduce((a, b) => a + (b.kpi[k] || 0), 0);
+  const k = {active:sum('active'), done:sum('done'), bugs:sum('bugs'), dupes:sum('dupes'), overdue:sum('overdue'), dueSoon:sum('dueSoon'), blocked:sum('blocked'), unassigned:sum('unassigned')};
+  const rows = bs.map(b => {
+    const act = b.lists.filter(l => !l.done && !l.park), tot = act.reduce((a, l) => a + l.total, 0) || 1;
+    const big = [...act].sort((x, y) => y.total - x.total)[0];
+    const segs = act.map((l, i) => `<span title="${esc(l.n)}: ${l.total}" style="width:${l.total / tot * 100}%;background:var(--gold);opacity:${(0.35 + 0.65 * (i + 1) / act.length).toFixed(2)}"></span>`).join('');
+    return `<tr><td><button class="bname" data-board="${esc(b.id)}">${esc(b.board)}</button><div class="hint">most cards in ${esc(big?.n || 'none')} · updated ${ago(b.pulledAt)}</div></td>
+      <td>${b.kpi.active}</td><td>${b.kpi.bugs}</td><td class="${b.kpi.overdue ? 'hot' : ''}">${b.kpi.overdue}</td><td>${b.kpi.dueSoon}</td><td>${b.kpi.blocked}</td><td>${b.kpi.unassigned}</td><td>${b.kpi.doneWeek}</td>
+      <td><div class="stack">${segs}</div></td></tr>`; }).join('');
+  const ppl = {};
+  bs.forEach(b => b.people.forEach(p => { const o = ppl[p.n] ||= {n:p.n, active:0, inFlight:0, high:0, bugs:0, overdue:0, boards:[]};
+    ['active', 'inFlight', 'high', 'bugs', 'overdue'].forEach(x => o[x] += p[x]); if (p.active) o.boards.push(b.board); }));
+  const pr = Object.values(ppl).filter(p => p.active).sort((a, b) => b.active - a.active), pmax = Math.max(...pr.map(p => p.active), 1);
+  const od = bs.flatMap(b => b.attention.overdue.map(c => ({...c, l:b.board + ' · ' + c.l}))).sort((a, b) => a.due < b.due ? -1 : 1).slice(0, 12);
+  return kpis(k) + `<div class="grid">
+    <section class="panel s12"><div class="ph"><h2>Boards side by side</h2><span class="hint">active cards exclude Done, Ideas and Phase 2</span></div>
+      <div class="tw"><table><thead><tr><th>Board</th><th>Active</th><th>Bugs</th><th>Overdue</th><th>Due 7d</th><th>Blocked</th><th>Unassigned</th><th>Done this wk</th><th>Where active cards sit</th></tr></thead><tbody>${rows}</tbody></table></div>
+      <p class="hint">The bar runs left to right through each board's lists, from Backlog toward Done; darker segments are further along.</p></section>
+    <section class="panel s7"><div class="ph"><h2>Workload across boards</h2><span class="hint">active cards per person, all boards combined</span></div>
+      <div class="tw"><table><thead><tr><th>Person</th><th>Active</th><th>Past dev</th><th>High pri</th><th>Bugs</th><th>Overdue</th></tr></thead><tbody>
+      ${pr.map(p => `<tr><td>${esc(p.n)}<div class="hint">${esc(p.boards.join(', '))}</div></td><td>${p.active}<span class="mini" style="width:${p.active / pmax * 60}px"></span></td><td>${p.inFlight}</td><td>${p.high}</td><td>${p.bugs}</td><td class="${p.overdue ? 'hot' : ''}">${p.overdue}</td></tr>`).join('')}
+      </tbody></table></div></section>
+    <section class="panel s5"><div class="ph"><h2>Longest overdue</h2><span class="hint">all boards</span></div>
+      <div class="items">${od.map(c => `<a class="item" href="https://trello.com/c/${esc(c.k)}" target="_blank" rel="noopener"><span class="id">#${c.id}</span><span><div class="t">${esc(c.n)}</div><div class="d">${esc(c.l)} · ${c.who.length ? esc(c.who.join(', ')) : 'Unassigned'}</div></span><span class="r"><span class="chip crit">was due ${shortDate(c.due)}</span></span></a>`).join('') || '<p class="empty">Nothing overdue.</p>'}</div></section>
+  </div>`;
+}
+function render(){
+  const bs = boardList(); if (!bs.length) return;
+  if (cur !== 'overview' && !SNAPS[cur]) cur = 'overview';
+  $('#state').hidden = true; const app = $('#app'); app.hidden = false; nav();
+  const link = $('#boardlink');
+  if (cur === 'overview') {
+    D = null; $('#title').textContent = 'All boards'; $('#sub').textContent = 'Pipeline flow, bugs, workload and sprint progress across the SideKix workspace.'; link.hidden = true;
+    const oldest = bs.reduce((a, b) => Date.parse(b.pulledAt) < Date.parse(a.pulledAt) ? b : a);
+    $('#updated').textContent = 'Updated ' + ago(oldest.pulledAt); $('#fresh').classList.toggle('stale', (Date.now() - Date.parse(oldest.pulledAt)) / 36e5 > 26);
+    app.innerHTML = overview(); return;
+  }
+  D = SNAPS[cur]; HIST = ALLHIST.filter(h => h.board === cur);
+  $('#title').textContent = D.board; $('#sub').textContent = 'Pipeline flow, bugs, workload and sprint progress for this board.'; link.hidden = false; link.href = D.boardUrl;
+  const hrs = (Date.now() - Date.parse(D.pulledAt)) / 36e5;
+  $('#updated').textContent = 'Updated ' + ago(D.pulledAt); $('#fresh').classList.toggle('stale', hrs > 26);
+  app.innerHTML = kpis(D.kpi) + `<div class="grid">${pipeline(D.lists)}${priority(D.priority, D.status)}${people(D.people)}${sprints(D.labels)}${weekly(D.weeks)}${trend()}${attention(D.attention)}</div>`;
+}
+
+document.addEventListener('click', e => { const s = e.target.closest('[data-board]'); if (s) { cur = s.dataset.board; try { history.replaceState(null, '', '#' + cur); } catch (err) {} render(); scrollTo({top:0}); return; }
+  const b = e.target.closest('[data-tab]'); if (!b) return;
+  tab = b.dataset.tab; try { localStorage.setItem('pulse-tab', tab); } catch (err) {}
+  if (D) $('#attn').outerHTML = attention(D.attention); $('#tab-' + tab)?.focus(); });
+document.addEventListener('pointermove', e => { const t = e.target.closest('[data-tip]'); t ? showTip(e, t.dataset.tip) : hideTip(); });
+document.addEventListener('pointerleave', hideTip);
+setInterval(() => { if (Object.keys(SNAPS).length) render(); }, 300000);
+
+async function load(){
+  try {
+    const r = await fetch('data.json?t=' + Date.now(), {cache:'no-store'});
+    if (!r.ok) throw new Error(r.status);
+    const d = await r.json();
+    SNAPS = {}; (d.boards || []).forEach(b => { if (b && b.kpi && b.id) SNAPS[b.id] = b; });
+    ALLHIST = (d.history || []).slice().sort((a, b) => a.day < b.day ? -1 : 1);
+    if (Object.keys(SNAPS).length) render(); else $('#state').textContent = 'No board data yet. It arrives with the next refresh.';
+  } catch (e) { if (!Object.keys(SNAPS).length) $('#state').textContent = 'The board data could not be loaded. Reload the page to try again.'; }
+}
+load(); setInterval(load, 300000);
+</script>
+
+</body>
+</html>
